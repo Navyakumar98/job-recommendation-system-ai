@@ -36,7 +36,7 @@ It leverages **Natural Language Processing (NLP)** and **semantic similarity sea
 1️⃣ Clone the Repository
 git clone https://github.com/Navyakumar98/job-recommendation-system-ai.git
 
-cd job-recommendation-system-ai
+  cd job-recommendation-system-ai
 
 2️⃣ Install Dependencies
 pip install -r requirements.txt
@@ -47,4 +47,5 @@ streamlit run app.py
 4️⃣ Open the App
 
 Once the server starts, open the URL shown in your terminal (usually http://localhost:8501) to start exploring your personalized job recommendations.
+
 
