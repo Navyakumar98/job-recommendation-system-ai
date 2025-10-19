@@ -7,6 +7,13 @@ import pandas as pd
 import streamlit as st
 from model import JobRecommendationSystem
 
+# -------------------- PAGE CONFIG --------------------
+st.set_page_config(
+    page_title=" JobGenie: Adaptive NLP-Powered Job Recommendation Platform",
+    page_icon="💼",
+    layout="wide"
+)
+
 # -------------------- CONSTANTS --------------------
 RATINGS_DIR = os.path.join(os.getcwd(), "data")
 RATINGS_PATH = os.path.join(RATINGS_DIR, "ratings.csv")
@@ -191,46 +198,53 @@ if st.session_state.results_ready and st.session_state.job_results:
 if st.session_state.enhanced_results:
     st.divider()
     er = st.session_state.enhanced_results
+    
+    st.markdown("### 🚀 Enhanced Recommendations Dashboard")
 
-    st.markdown("### 📊 Old vs Enhanced Recommendations (Top 10)")
+    with st.container():
+        # Use columns for a compact layout
+        col1, col2 = st.columns([1, 1])
 
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("**Old (No Feedback)**")
-        for i, job in enumerate(er["old_jobs"][:10], start=1):
-            st.write(f"{i}. {job['position'].title()} — {job['workplace'].title()} "
-                     f"(sim={job.get('similarity', 0):.3f})")
-    with c2:
-        st.markdown("**Enhanced (Feedback-Aware)**")
-        for i, job in enumerate(er["new_jobs"][:10], start=1):
-            st.write(f"{i}. {job['position'].title()} — {job['workplace'].title()} "
-                     f"(adj={job.get('adjusted_score', 0):.3f})")
+        with col1:
+            st.markdown("#### 🧮 Metrics")
+            m = er["metrics"]
+            st.markdown(
+                f"<div style='display:flex; flex-wrap:wrap; gap:8px;'>"
+                f"<span class='metric-pill'>NDCG@20: <b>{m['ndcg_at_k']}</b></span>"
+                f"<span class='metric-pill'>Spearman-R: <b>{m['spearman_r']}</b></span>"
+                f"<span class='metric-pill'>Reordered: <b>{m['reordered_pct']}%</b></span>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+            st.markdown("---") # Visual separator
+            st.markdown("#### 📈 Metrics Trend")
+            history = recommender.get_metrics_history()
+            if not history.empty:
+                history_display = history.copy()
+                history_display["timestamp"] = pd.to_datetime(history_display["timestamp"])
+                history_display = history_display.sort_values("timestamp")
+                st.line_chart(history_display.set_index("timestamp")[["ndcg_at_k", "spearman_r"]])
+            else:
+                st.caption("Run enhancement multiple times to see a trend.")
+        
+        with col2:
+            st.markdown("#### 📊 Old vs Enhanced (Top 20)")
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("**Old (No Feedback)**")
+                for i, job in enumerate(er["old_jobs"][:20], start=1):
+                    st.write(f"{i}. {job['position'].title()} ({job.get('similarity', 0):.3f})")
+            with c2:
+                st.markdown("**Enhanced (Feedback)**")
+                for i, job in enumerate(er["new_jobs"][:20], start=1):
+                    st.write(f"{i}. {job['position'].title()} ({job.get('adjusted_score', 0):.3f})")
 
-    # Metrics
-    st.markdown("### 🧮 Metrics")
-    m = er["metrics"]
-    st.markdown(
-        f"<span class='metric-pill'>NDCG@20: <b>{m['ndcg_at_k']}</b></span>"
-        f"<span class='metric-pill'>Spearman-R: <b>{m['spearman_r']}</b></span>"
-        f"<span class='metric-pill'>Reordered: <b>{m['reordered_pct']}%</b></span>",
-        unsafe_allow_html=True
-    )
-
-    # Show comparison table (head)
-    st.markdown("#### Detailed comparison (top 20 rows)")
-    comp_df = er["comparison"].copy()
-    st.dataframe(comp_df.head(20))
-
-    # Metrics history chart (if available)
-    st.markdown("#### 📈 Metrics trend")
-    history = recommender.get_metrics_history()
-    if not history.empty:
-        history_display = history.copy()
-        history_display["timestamp"] = pd.to_datetime(history_display["timestamp"])
-        history_display = history_display.sort_values("timestamp")
-        st.line_chart(history_display.set_index("timestamp")[["ndcg_at_k", "spearman_r"]])
-    else:
-        st.caption("Run enhancement a few times to accumulate metrics history.")
+        # Detailed comparison table below the main dashboard
+        st.markdown("---")
+        st.markdown("#### Detailed Comparison (Top 20)")
+        comp_df = er["comparison"].copy()
+        st.dataframe(comp_df.head(20))
 
 # -------------------- DEBUG PANEL --------------------
 with st.sidebar.expander("🐞 Debug Info"):
