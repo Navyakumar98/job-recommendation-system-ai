@@ -80,14 +80,15 @@ def save_rating(resume_id, job_id, rating):
     df["rating"] = df["rating"].astype(int)
     df.to_csv(feedback_file, index=False)
 
-def run_recommend():
+def run_recommend(source: str = "button"):
     """Generate personalized job recommendations (uses feedback if available)."""
     with st.spinner("🔍 Analyzing your resume and finding best job matches..."):
         results = recommender.recommend_jobs(st.session_state.resume_text, top_n=20, use_feedback=True)
     st.session_state.job_results = results["recommended_jobs"]
     st.session_state.results_ready = True
     st.session_state.enhanced_results = None  # reset enhanced panel
-    st.success(f"✅ Found {len(st.session_state.job_results)} matching jobs!")
+    if source == "main":
+        st.success(f"✅ Found {len(st.session_state.job_results)} matching jobs!")
 
 
 # -------------------- UI THEME --------------------
@@ -148,7 +149,7 @@ st.divider()
 cols = st.columns([1, 1, 2])
 with cols[0]:
     if st.button("🚀 Recommend Jobs", disabled=not bool(st.session_state.resume_text)):
-        run_recommend()
+        run_recommend("main")
 with cols[1]:
     enhance_disabled = not bool(st.session_state.resume_text)
     if st.button("✨ Enhance Model with Feedback", disabled=enhance_disabled):
@@ -191,7 +192,7 @@ if st.session_state.results_ready and st.session_state.job_results:
             if st.button("💾 Submit Rating", key=f"rate_btn_{i}"):
                 save_rating(st.session_state.resume_id, job_id, rating)
                 st.toast(f"⭐ You rated Job {i} as {rating}/5")
-
+                run_recommend("rating")
             st.markdown("</div>", unsafe_allow_html=True)
 
 # -------------------- ENHANCED MODEL (OLD vs NEW) --------------------
