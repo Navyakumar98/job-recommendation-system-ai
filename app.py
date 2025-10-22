@@ -142,7 +142,7 @@ if uploaded_file is not None:
         for key in list(st.session_state.keys()):
             if key.startswith("slider_") or key.startswith("rate_btn_"):
                 del st.session_state[key]
-        st.toast("🧹 Cleared previous ratings and job results — ready for new recommendations!")
+        st.toast("preparing new recommendations ...")
 
 # -------------------- ACTION BUTTONS --------------------
 st.divider()
