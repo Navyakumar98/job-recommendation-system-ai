@@ -191,6 +191,7 @@ if st.session_state.results_ready and st.session_state.job_results:
             if st.button("💾 Submit Rating", key=f"rate_btn_{i}"):
                 save_rating(st.session_state.resume_id, job_id, rating)
                 st.toast(f"⭐ You rated Job {i} as {rating}/5")
+                run_recommend()
 
             st.markdown("</div>", unsafe_allow_html=True)
 
