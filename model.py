@@ -419,24 +419,14 @@ class JobRecommendationSystem:
         if not os.path.exists(self.metrics_path):
             return pd.DataFrame(columns=full_schema)
         try:
-            return pd.read_csv(self.metrics_path)
-        except pd.errors.ParserError:
-            # Fallback for ragged CSV due to schema changes.
-            import csv
-            with open(self.metrics_path, 'r', encoding='utf-8') as f:
-                reader = csv.reader(f)
-                try:
-                    header = next(reader)
-                    data = list(reader)
-                except StopIteration:
-                    return pd.DataFrame(columns=full_schema)
-
-            df = pd.DataFrame(data)
-            num_actual_cols = df.shape[1]
-            df.columns = full_schema[:num_actual_cols]
-
-            for col_name in full_schema:
-                if col_name not in df.columns:
-                    df[col_name] = np.nan
-
+            df = pd.read_csv(self.metrics_path, header=None)
+            # Assign columns based on the number of columns found in the file
+            num_cols = len(df.columns)
+            df.columns = full_schema[:num_cols]
+            # Ensure all columns from the schema are present
+            for col in full_schema:
+                if col not in df.columns:
+                    df[col] = pd.NA
             return df[full_schema]
+        except (pd.errors.ParserError, pd.errors.EmptyDataError):
+            return pd.DataFrame(columns=full_schema)
