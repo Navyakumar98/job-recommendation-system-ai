@@ -164,110 +164,138 @@ st.markdown(
             color: white;
             font-weight: bold;
         }
+        .upload-box {
+            border: 2px dashed #0078ff;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            background-color: #f8f9fa;
+        }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# -------------------- APP HEADER --------------------
-st.title("💼 JobGenie: Adaptive NLP-Powered Job Recommendation Platform")
-st.markdown("Upload your resume and get **personalized, explainable job matches** instantly 🚀")
+# -------------------- HEADER --------------------
+st.markdown(
+    """
+    <div style="display: flex; align-items: center; margin-bottom: 20px;">
+        <h1 style="margin: 0;">JobGenie</h1>
+        <h3 style="margin: 0; margin-left: 10px; color: #555;">Adaptive NLP-Powered Job Recommendation Platform</h3>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
-uploaded_file = st.file_uploader("📄 Upload your resume (PDF only)", type=["pdf"])
+# -------------------- HEADER --------------------
+st.markdown(
+    """
+    <div style="display: flex; align-items: center; margin-bottom: 20px;">
+        <h1 style="margin: 0;">JobGenie</h1>
+        <h3 style="margin: 0; margin-left: 10px; color: #555;">Adaptive NLP-Powered Job Recommendation Platform</h3>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
-# -------------------- RESET ON NEW RESUME --------------------
-if uploaded_file is not None:
-    # If a new file is uploaded, reset the UI and state
-    if st.session_state.last_uploaded_file != uploaded_file.name:
-        st.session_state.last_uploaded_file = uploaded_file.name
-        st.session_state.resume_text = extract_text_from_pdf(uploaded_file)
-        st.session_state.resume_id = hash(st.session_state.resume_text) % (10**8)
+# -------------------- LAYOUT --------------------
+left_col, right_col = st.columns([1, 2])
 
-        # Clear previous results and sliders
-        st.session_state.job_results = []
-        st.session_state.results_ready = False
-        st.session_state.enhanced_results = None
-        for key in list(st.session_state.keys()):
-            if key.startswith("slider_") or key.startswith("rate_btn_"):
-                del st.session_state[key]
-        st.toast("preparing new recommendations ...")
+    with left_col:
+        st.markdown("#### Your Profile")
+        user_location = st.text_input("Your Location (e.g., city, state)", "New York, NY")
+        user_salary = st.text_input("Desired Salary (e.g., 120000)", "120000")
+        user_experience = st.text_input("Years of Experience", "5")
+        st.markdown("---")
+        st.markdown("#### Factor Weights")
+        location_weight = st.slider("Location", 0.0, 1.0, 0.3, key="location_slider")
+        salary_weight = st.slider("Salary", 0.0, 1.0, 0.4, key="salary_slider")
+        experience_weight = st.slider("Experience", 0.0, 1.0, 0.3, key="experience_slider")
 
-if st.session_state.get("resume_quality"):
-    st.metric("Resume Quality Score", f"{st.session_state.resume_quality:.2f}")
-
-# -------------------- ACTION BUTTONS --------------------
-st.divider()
-with st.sidebar:
-    st.header("Search Filters")
-
-    # User Preference Inputs
-    user_location = st.text_input("Your Location (e.g., city, state)", "New York, NY")
-    user_salary = st.text_input("Desired Salary (e.g., 120000)", "120000")
-    user_experience = st.text_input("Years of Experience", "5")
-
-    st.divider()
-
-    # Factor Weight Sliders
-    st.subheader("Factor Weights")
-    location_weight = st.slider("Location", 0.0, 1.0, 0.2)
-    salary_weight = st.slider("Salary", 0.0, 1.0, 0.25)
-    experience_weight = st.slider("Experience", 0.0, 1.0, 0.15)
-
-cols = st.columns([1, 1, 2])
-with cols[0]:
-    if st.button("🚀 Recommend Jobs", disabled=not bool(st.session_state.resume_text)):
-        run_recommend(
-            "main",
-            location_weight=location_weight,
-            salary_weight=salary_weight,
-            experience_weight=experience_weight,
-            user_location=user_location,
-            user_salary=user_salary,
-            user_experience=user_experience
-        )
-with cols[1]:
-    enhance_disabled = not bool(st.session_state.resume_text)
-    if st.button("✨ Enhance Model with Feedback", disabled=enhance_disabled):
-        with st.spinner("🧠 Retraining model using your feedback..."):
-            st.session_state.enhanced_results = recommender.retrain_with_feedback(
-                st.session_state.resume_text, top_n=20
+    with right_col:
+        st.markdown("#### Your AI Co-Pilot")
+        with st.container():
+            st.markdown(
+                """
+                <div class="upload-box">
+                    <p>Upload your resume (PDF only)</p>
+                </div>
+                """,
+                unsafe_allow_html=True
             )
+            uploaded_file = st.file_uploader("", type=["pdf"], key="file_uploader", label_visibility="collapsed")
 
-# -------------------- SHOW JOB RESULTS --------------------
+        if uploaded_file is not None:
+            if st.session_state.last_uploaded_file != uploaded_file.name:
+                st.session_state.last_uploaded_file = uploaded_file.name
+                st.session_state.resume_text = extract_text_from_pdf(uploaded_file)
+                st.session_state.resume_id = hash(st.session_state.resume_text) % (10**8)
+                st.session_state.job_results = []
+                st.session_state.results_ready = False
+                st.session_state.enhanced_results = None
+                st.toast("Resume uploaded successfully!")
+
+        btn_cols = st.columns(2)
+        with btn_cols[0]:
+            if st.button("Find My Perfect Jobs", disabled=not bool(st.session_state.resume_text)):
+                run_recommend(
+                    "main",
+                    location_weight=location_weight,
+                    salary_weight=salary_weight,
+                    experience_weight=experience_weight,
+                    user_location=user_location,
+                    user_salary=user_salary,
+                    user_experience=user_experience
+                )
+        with btn_cols[1]:
+            if st.button("Enhance with AI Feedback", disabled=not bool(st.session_state.resume_text)):
+                with st.spinner("🧠 Retraining model using your feedback..."):
+                    st.session_state.enhanced_results = recommender.retrain_with_feedback(
+                        st.session_state.resume_text, top_n=20
+                    )
+
+# -------------------- JOB RESULTS --------------------
 if st.session_state.results_ready and st.session_state.job_results:
-    st.divider()
-    st.markdown("### 🔎 Recommended Jobs for You")
+    st.markdown("---")
+    st.markdown("### Recommended Jobs for You")
 
     for i, job in enumerate(st.session_state.job_results[:20], start=1):
         job_id = job.get("Job Id", f"unknown_{i}")
         with st.container():
             st.markdown("<div class='job-card'>", unsafe_allow_html=True)
 
-            st.markdown(f"#### {job['position'].title()} — {job['workplace'].title()}")
-            st.write(f"**Mode:** {job['working_mode'].capitalize()}")
+            cols = st.columns([3, 1])
+            with cols[0]:
+                st.markdown(f"#### {job['position'].title()} — {job['workplace'].title()}")
+            with cols[1]:
+                st.markdown(f"<span style='float: right;'>{job['working_mode'].capitalize()}</span>", unsafe_allow_html=True)
 
-            # Progress indicators for explainability
             base_sim = float(job.get("similarity", 0))
             adj_sim = float(job.get("adjusted_score", base_sim))
-            st.write(f"**Base Similarity:** {base_sim:.3f}")
-            st.progress(min(max(base_sim, 0.0), 1.0))
-            st.write(f"**Adjusted (Feedback + Skills):** {adj_sim:.3f}")
-            st.progress(min(max(adj_sim, 0.0), 1.0))
+            st.slider("Match Score", 0.0, 1.0, adj_sim, disabled=True, key=f"score_{i}")
 
-            # Skills / duties
-            st.write(f"**Duties:** {job['job_role_and_duties'][:250]}...")
-            st.write(f"**Skills Required:** {job['requisite_skill']}")
-            if job.get("matched_skills"):
-                chips = "".join([f"<span class='tag'>{s.strip()}</span>" for s in str(job['matched_skills']).split(",") if s.strip()][:8])
-                if chips:
-                    st.markdown(f"**Matched Skills:** {chips}", unsafe_allow_html=True)
+            with st.expander("Details"):
+                st.write(f"**Duties:** {job['job_role_and_duties'][:250]}...")
+                st.write(f"**Skills Required:** {job['requisite_skill']}")
+                if job.get("matched_skills"):
+                    chips = "".join([f"<span class='tag'>{s.strip()}</span>" for s in str(job['matched_skills']).split(",") if s.strip()][:8])
+                    if chips:
+                        st.markdown(f"**Matched Skills:** {chips}", unsafe_allow_html=True)
 
-            # Rating control
-            rating = st.slider(f"⭐ Rate Job {i} (1–5)", 1, 5, 3, key=f"slider_{i}")
-            if st.button("💾 Submit Rating", key=f"rate_btn_{i}"):
-                save_rating(st.session_state.resume_id, job_id, rating)
-                st.toast(f"⭐ You rated Job {i} as {rating}/5")
-                run_recommend("rating")
+            feedback_cols = st.columns([3, 2])
+            with feedback_cols[0]:
+                rating = st.slider("Your Rating", 1, 5, 3, key=f"slider_{i}")
+            with feedback_cols[1]:
+                if st.button("Submit Feedback", key=f"rate_btn_{i}"):
+                    save_rating(st.session_state.resume_id, job_id, rating)
+                    st.toast(f"⭐ You rated Job {i} as {rating}/5")
+                    run_recommend(
+                        "rating",
+                        location_weight=st.session_state.get('location_slider', 0.2),
+                        salary_weight=st.session_state.get('salary_slider', 0.25),
+                        experience_weight=st.session_state.get('experience_slider', 0.15),
+                    )
+
             st.markdown("</div>", unsafe_allow_html=True)
 
 # -------------------- ENHANCED MODEL (OLD vs NEW) --------------------
