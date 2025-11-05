@@ -80,11 +80,30 @@ def save_rating(resume_id, job_id, rating):
     df["rating"] = df["rating"].astype(int)
     df.to_csv(feedback_file, index=False)
 
-def run_recommend(source: str = "button"):
+def run_recommend(
+    source: str = "button",
+    location_weight: float = 0.1,
+    salary_weight: float = 0.1,
+    experience_weight: float = 0.1,
+    user_location: str = "New York, NY",
+    user_salary: str = "100000",
+    user_experience: str = "5"
+):
     """Generate personalized job recommendations (uses feedback if available)."""
     with st.spinner("🔍 Analyzing your resume and finding best job matches..."):
-        results = recommender.recommend_jobs(st.session_state.resume_text, top_n=20, use_feedback=True)
+        results = recommender.recommend_jobs(
+            st.session_state.resume_text,
+            top_n=20,
+            use_feedback=True,
+            location_weight=location_weight,
+            salary_weight=salary_weight,
+            experience_weight=experience_weight,
+            user_location=user_location,
+            user_salary=user_salary,
+            user_experience=user_experience
+        )
     st.session_state.job_results = results["recommended_jobs"]
+    st.session_state.resume_quality = results["resume_quality"]
     st.session_state.results_ready = True
     st.session_state.enhanced_results = None  # reset enhanced panel
     if source == "main":
@@ -173,12 +192,39 @@ if uploaded_file is not None:
                 del st.session_state[key]
         st.toast("preparing new recommendations ...")
 
+if st.session_state.get("resume_quality"):
+    st.metric("Resume Quality Score", f"{st.session_state.resume_quality:.2f}")
+
 # -------------------- ACTION BUTTONS --------------------
 st.divider()
+with st.sidebar:
+    st.header("Search Filters")
+
+    # User Preference Inputs
+    user_location = st.text_input("Your Location (e.g., city, state)", "New York, NY")
+    user_salary = st.text_input("Desired Salary (e.g., 120000)", "120000")
+    user_experience = st.text_input("Years of Experience", "5")
+
+    st.divider()
+
+    # Factor Weight Sliders
+    st.subheader("Factor Weights")
+    location_weight = st.slider("Location", 0.0, 1.0, 0.2)
+    salary_weight = st.slider("Salary", 0.0, 1.0, 0.25)
+    experience_weight = st.slider("Experience", 0.0, 1.0, 0.15)
+
 cols = st.columns([1, 1, 2])
 with cols[0]:
     if st.button("🚀 Recommend Jobs", disabled=not bool(st.session_state.resume_text)):
-        run_recommend("main")
+        run_recommend(
+            "main",
+            location_weight=location_weight,
+            salary_weight=salary_weight,
+            experience_weight=experience_weight,
+            user_location=user_location,
+            user_salary=user_salary,
+            user_experience=user_experience
+        )
 with cols[1]:
     enhance_disabled = not bool(st.session_state.resume_text)
     if st.button("✨ Enhance Model with Feedback", disabled=enhance_disabled):
