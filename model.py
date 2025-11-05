@@ -136,7 +136,11 @@ class JobRecommendationSystem:
         return float(np.clip(alpha, 0.5, 0.9))
 
     # -------------------- Core recommend --------------------
-    def recommend_jobs(self, resume_text: str, top_n: int = 20, use_feedback: bool = True):
+    def recommend_jobs(
+        self, resume_text: str, top_n: int = 20, use_feedback: bool = True,
+        location_weight: float = 0.1, salary_weight: float = 0.1, experience_weight: float = 0.1,
+        user_location: str = "", user_salary: str = "", user_experience: str = ""
+    ):
         """
         Recommend jobs for a given resume.
         If use_feedback=True and ratings exist, apply feedback-driven re-ranking with:
@@ -145,6 +149,7 @@ class JobRecommendationSystem:
         Returns dict with 'recommended_jobs' (list of dict rows).
         """
         resume_text = self.clean_text(resume_text)
+        resume_quality = self._calculate_resume_quality(resume_text)
 
         # TF-IDF prefilter
         filtered_texts, filtered_df, filtered_embeds = self.filter_top_jobs(
@@ -206,9 +211,139 @@ class JobRecommendationSystem:
         # Rationale: reward explicit skill matches without overpowering semantics
         skill_boost = 0.02 * np.minimum(recs["skill_overlap"].to_numpy(dtype=float), 5.0)
 
-        recs["adjusted_score"] = alpha * recs["similarity"] + beta * up_sim + skill_boost
-        recs = recs.sort_values(by="adjusted_score", ascending=False)
-        return {"recommended_jobs": recs.to_dict(orient="records")}
+        # Location, Salary, and Experience Scores
+        recs["location_score"] = recs["workplace"].apply(lambda x: self._calculate_location_score(x, user_location))
+        recs["salary_score"] = recs["salary"].apply(lambda x: self._calculate_salary_score(x, user_salary))
+        recs["experience_score"] = recs["requisite_skill"].apply(lambda x: self._calculate_experience_score(x, user_experience))
+
+        try:
+            recs["adjusted_score"] = (
+                alpha * recs["similarity"] +
+                beta * up_sim +
+                skill_boost +
+                location_weight * recs["location_score"] +
+                salary_weight * recs["salary_score"] +
+                experience_weight * recs["experience_score"]
+            )
+            recs = recs.sort_values(by="adjusted_score", ascending=False)
+        except KeyError:
+            # If any of the score columns are missing, return an empty list
+            return {"recommended_jobs": [], "resume_quality": resume_quality}
+        return {"recommended_jobs": recs.to_dict(orient="records"), "resume_quality": resume_quality}
+
+    def _calculate_resume_quality(self, resume_text: str) -> float:
+        """
+        Calculate a resume quality score based on heuristics.
+        - Text length (rewards detail)
+        - Keyword diversity (rewards richness)
+        Returns a score in [0, 1].
+        """
+        # Normalize text
+        clean_text = self.clean_text(resume_text)
+        words = clean_text.split()
+
+        # 1. Text Length Score
+        # Target a "sweet spot" length (e.g., 250-750 words)
+        word_count = len(words)
+        if word_count < 150:
+            length_score = 0.2
+        elif word_count <= 250:
+            length_score = 0.5
+        elif word_count <= 750:
+            length_score = 1.0  # Ideal length
+        else:
+            length_score = 0.7  # Too long
+
+        # 2. Keyword Diversity Score
+        # Presence of common professional sections/keywords
+        keywords = {
+            "experience", "education", "skills", "projects",
+            "summary", "objective", "achievements", "contact",
+            "linkedin", "github"
+        }
+        found_keywords = sum(1 for keyword in keywords if keyword in clean_text)
+        diversity_score = min(found_keywords / 6.0, 1.0)  # Cap at 6 keywords for max score
+
+        # 3. Quantifiable Achievements
+        # Presence of numbers/metrics (e.g., "increased sales by 20%")
+        num_count = sum(1 for word in words if word.isdigit())
+        metrics_score = min(num_count / 5.0, 1.0) # Cap at 5 numbers for max score
+
+        # Final weighted score
+        final_score = (0.4 * length_score) + (0.4 * diversity_score) + (0.2 * metrics_score)
+        return round(final_score, 2)
+
+    def _calculate_location_score(self, job_location: str, user_location: str) -> float:
+        """
+        Calculate a location score based on string matching.
+        - 1.0 if the user's location is a substring of the job's location (case-insensitive).
+        - 0.0 otherwise.
+        """
+        if not user_location or pd.isna(job_location):
+            return 0.0
+        return 1.0 if user_location.lower() in str(job_location).lower() else 0.0
+
+    def _calculate_salary_score(self, job_salary: str, user_salary: str) -> float:
+        """
+        Calculate a salary score.
+        - Parses job salary (handles ranges and "Up to X" formats).
+        - Compares the max potential salary to the user's desired salary.
+        - Returns a score in [0, 1] based on how well it meets or exceeds the desire.
+        """
+        if pd.isna(job_salary) or not user_salary.isdigit():
+            return 0.0
+
+        user_s = int(user_salary)
+        job_s_str = str(job_salary).lower().replace(",", "").replace("$", "")
+
+        # Extract max salary from various formats
+        max_salary = 0
+        if "up to" in job_s_str:
+            parts = job_s_str.split("up to")
+            if len(parts) > 1 and parts[1].strip().isdigit():
+                max_salary = int(parts[1].strip())
+        elif "-" in job_s_str: # Range
+            parts = job_s_str.split("-")
+            if len(parts) > 1 and parts[1].strip().isdigit():
+                max_salary = int(parts[1].strip())
+        elif job_s_str.strip().isdigit():
+            max_salary = int(job_s_str.strip())
+
+        if max_salary == 0:
+            return 0.0
+
+        # Score based on ratio, capped at 1.0 (meeting desire is a full score)
+        score = min(max_salary / user_s, 1.0)
+        return score
+
+    def _calculate_experience_score(self, job_experience: str, user_experience: str) -> float:
+        """
+        Calculate an experience score.
+        - Extracts required years of experience from job text (e.g., "5+ years").
+        - Compares required experience to user's stated experience.
+        - Returns 1.0 if user meets or exceeds, 0.5 if slightly under, 0.0 otherwise.
+        """
+        if pd.isna(job_experience) or not user_experience.isdigit():
+            return 0.0
+
+        user_exp = int(user_experience)
+        job_exp_str = str(job_experience).lower()
+
+        # Find numbers that might represent years of experience
+        import re
+        found_nums = re.findall(r'(\d+)\+?\s*years', job_exp_str)
+        if not found_nums:
+            return 0.2  # Neutral score if no explicit requirement found
+
+        required_exp = max([int(n) for n in found_nums])
+
+        # Compare and score
+        if user_exp >= required_exp:
+            return 1.0
+        elif user_exp >= required_exp - 2: # Within 2 years
+            return 0.5
+        else:
+            return 0.0
 
     # -------------------- Retrain / Evaluate --------------------
     def retrain_with_feedback(self, resume_text: str, top_n: int = 20):
@@ -220,9 +355,11 @@ class JobRecommendationSystem:
         Returns dict with lists and metrics, and logs metrics to data/metrics.csv.
         """
         # Old: no feedback
-        old = pd.DataFrame(self.recommend_jobs(resume_text, top_n=top_n, use_feedback=False)["recommended_jobs"])
+        old_results = self.recommend_jobs(resume_text, top_n=top_n, use_feedback=False)
+        old = pd.DataFrame(old_results["recommended_jobs"])
         # New: with feedback
-        new = pd.DataFrame(self.recommend_jobs(resume_text, top_n=top_n, use_feedback=True)["recommended_jobs"])
+        new_results = self.recommend_jobs(resume_text, top_n=top_n, use_feedback=True)
+        new = pd.DataFrame(new_results["recommended_jobs"])
 
         # Align on Job Id to compare scores directly
         comp = old[["Job Id", "position", "similarity"]].merge(
@@ -253,7 +390,11 @@ class JobRecommendationSystem:
             "ndcg_at_k": round(ndcg, 4),
             "spearman_r": round(float(spear), 4),
             "reordered_pct": round(reordered_pct, 2),
-            "k": top_n
+            "k": top_n,
+            "resume_quality": new_results.get("resume_quality", 0.0),
+            "avg_location_score": new["location_score"].mean(),
+            "avg_salary_score": new["salary_score"].mean(),
+            "avg_experience_score": new["experience_score"].mean(),
         }])
         if os.path.exists(self.metrics_path):
             log_row.to_csv(self.metrics_path, mode="a", header=False, index=False)
@@ -274,5 +415,8 @@ class JobRecommendationSystem:
     def get_metrics_history(self):
         """Return metrics history DataFrame if available."""
         if not os.path.exists(self.metrics_path):
-            return pd.DataFrame(columns=["timestamp", "ndcg_at_k", "spearman_r", "reordered_pct", "k"])
+            return pd.DataFrame(columns=[
+                "timestamp", "ndcg_at_k", "spearman_r", "reordered_pct", "k",
+                "resume_quality", "avg_location_score", "avg_salary_score", "avg_experience_score"
+            ])
         return pd.read_csv(self.metrics_path)
