@@ -29,7 +29,7 @@ It leverages **Natural Language Processing (NLP)** and **semantic similarity sea
 
 ---
 
-## ⚙️ Setup & Usage
+##  Setup & Usage
 
 ###
 
@@ -45,6 +45,7 @@ It leverages **Natural Language Processing (NLP)** and **semantic similarity sea
 4️. Open the App
 
 Once the server starts, open the URL shown in your terminal (usually http://localhost:8501) to start exploring your personalized job recommendations.
+
 
 
 
