@@ -1,21 +1,21 @@
-﻿# 💼 JobGenie: Adaptive NLP-Powered Job Recommendation Platform
+﻿#  JobGenie: Adaptive NLP-Powered Job Recommendation Platform
 
 **JobGenie** is an AI-driven job recommendation engine that analyzes resumes and suggests the most relevant job opportunities based on your **skills, experience, and career background**.  
 It leverages **Natural Language Processing (NLP)** and **semantic similarity search** to deliver accurate, explainable, and personalized job matches.
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
-- 📄 **Resume Upload** — Upload your PDF resume directly through the web interface.
-- 🤖 **AI-Based Analysis** — Uses `SentenceTransformer` embeddings to understand the true context of your skills and experience.
-- ⚡ **Fast & Scalable Search** — Powered by `FAISS` (Facebook AI Similarity Search) for efficient large-scale similarity lookup.
-- 🧠 **Hybrid Filtering** — Combines `TF-IDF` keyword filtering and semantic similarity for more precise job matching.
-- 🪄 **Streamlit Web App** — A clean, interactive UI that makes exploring recommendations easy and enjoyable.
+-  **Resume Upload** — Upload your PDF resume directly through the web interface.
+-  **AI-Based Analysis** — Uses `SentenceTransformer` embeddings to understand the true context of your skills and experience.
+-  **Fast & Scalable Search** — Powered by `FAISS` (Facebook AI Similarity Search) for efficient large-scale similarity lookup.
+-  **Hybrid Filtering** — Combines `TF-IDF` keyword filtering and semantic similarity for more precise job matching.
+-  **Streamlit Web App** — A clean, interactive UI that makes exploring recommendations easy and enjoyable.
 
 ---
 
-## 🧰 Technologies Used
+##  Technologies Used
 
 | Category | Tools / Libraries |
 |-----------|------------------|
@@ -33,19 +33,20 @@ It leverages **Natural Language Processing (NLP)** and **semantic similarity sea
 
 ###
 
-1️⃣ Clone the Repository
+1️. Clone the Repository
 git clone https://github.com/Navyakumar98/job-recommendation-system-ai.git
 
   cd job-recommendation-system-ai
 
-2️⃣ Install Dependencies
+2️. Install Dependencies
 pip install -r requirements.txt
 
-3️⃣ Run the Streamlit Application
+3. Run the Streamlit Application
 streamlit run app.py
 
-4️⃣ Open the App
+4️. Open the App
 
 Once the server starts, open the URL shown in your terminal (usually http://localhost:8501) to start exploring your personalized job recommendations.
+
 
 
