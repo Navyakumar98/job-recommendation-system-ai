@@ -46,9 +46,11 @@ def extract_text_from_pdf(pdf_file):
     text = "\n".join([page.get_text("text") for page in doc])
     return text.strip().lower()
 
+
 def ensure_ratings_dir():
     """Make sure the data directory exists."""
     os.makedirs(RATINGS_DIR, exist_ok=True)
+
 
 def save_rating(resume_id, job_id, rating):
     """Save or update numeric rating for (resume_id, job_id)."""
@@ -80,6 +82,7 @@ def save_rating(resume_id, job_id, rating):
     df["rating"] = df["rating"].astype(int)
     df.to_csv(feedback_file, index=False)
 
+
 def run_recommend(
     source: str = "button",
     location_weight: float = 0.1,
@@ -102,10 +105,11 @@ def run_recommend(
             user_salary=user_salary,
             user_experience=user_experience
         )
+
     st.session_state.job_results = results["recommended_jobs"]
-    st.session_state.resume_quality = results["resume_quality"]
+    st.session_state.resume_quality = results.get("resume_quality", None)
     st.session_state.results_ready = True
-    st.session_state.enhanced_results = None  # reset enhanced panel
+    st.session_state.enhanced_results = None
     if source == "main":
         st.success(f"✅ Found {len(st.session_state.job_results)} matching jobs!")
 
@@ -147,23 +151,6 @@ st.markdown(
             display:inline-block;margin:2px 6px 0 0;padding:4px 10px;border-radius:12px;
             background:#f1f5f9;border:1px solid #e2e8f0;font-size:13px;
         }
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 24px;
-        }
-        .stTabs [data-baseweb="tab"] {
-            height: 50px;
-            white-space: pre-wrap;
-            background-color: transparent;
-            border-radius: 4px 4px 0px 0px;
-            gap: 1px;
-            padding-top: 10px;
-            padding-bottom: 10px;
-        }
-        .stTabs [aria-selected="true"] {
-            background-color: #0078ff;
-            color: white;
-            font-weight: bold;
-        }
         .upload-box {
             border: 2px dashed #0078ff;
             border-radius: 12px;
@@ -187,72 +174,61 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# -------------------- HEADER --------------------
-st.markdown(
-    """
-    <div style="display: flex; align-items: center; margin-bottom: 20px;">
-        <h1 style="margin: 0;">JobGenie</h1>
-        <h3 style="margin: 0; margin-left: 10px; color: #555;">Adaptive NLP-Powered Job Recommendation Platform</h3>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
 # -------------------- LAYOUT --------------------
 left_col, right_col = st.columns([1, 2])
 
-    with left_col:
-        st.markdown("#### Your Profile")
-        user_location = st.text_input("Your Location (e.g., city, state)", "New York, NY")
-        user_salary = st.text_input("Desired Salary (e.g., 120000)", "120000")
-        user_experience = st.text_input("Years of Experience", "5")
-        st.markdown("---")
-        st.markdown("#### Factor Weights")
-        location_weight = st.slider("Location", 0.0, 1.0, 0.3, key="location_slider")
-        salary_weight = st.slider("Salary", 0.0, 1.0, 0.4, key="salary_slider")
-        experience_weight = st.slider("Experience", 0.0, 1.0, 0.3, key="experience_slider")
+with left_col:
+    st.markdown("#### Your Profile")
+    user_location = st.text_input("Your Location (e.g., city, state)", "New York, NY")
+    user_salary = st.text_input("Desired Salary (e.g., 120000)", "120000")
+    user_experience = st.text_input("Years of Experience", "5")
+    st.markdown("---")
+    st.markdown("#### Factor Weights")
+    location_weight = st.slider("Location", 0.0, 1.0, 0.3, key="location_slider")
+    salary_weight = st.slider("Salary", 0.0, 1.0, 0.4, key="salary_slider")
+    experience_weight = st.slider("Experience", 0.0, 1.0, 0.3, key="experience_slider")
 
-    with right_col:
-        st.markdown("#### Your AI Co-Pilot")
-        with st.container():
-            st.markdown(
-                """
-                <div class="upload-box">
-                    <p>Upload your resume (PDF only)</p>
-                </div>
-                """,
-                unsafe_allow_html=True
+with right_col:
+    st.markdown("#### Your JobGenie")
+    with st.container():
+        st.markdown(
+            """
+            <div class="upload-box">
+                <p>Upload your resume (PDF only)</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        uploaded_file = st.file_uploader("", type=["pdf"], key="file_uploader", label_visibility="collapsed")
+
+    if uploaded_file is not None:
+        if st.session_state.last_uploaded_file != uploaded_file.name:
+            st.session_state.last_uploaded_file = uploaded_file.name
+            st.session_state.resume_text = extract_text_from_pdf(uploaded_file)
+            st.session_state.resume_id = hash(st.session_state.resume_text) % (10**8)
+            st.session_state.job_results = []
+            st.session_state.results_ready = False
+            st.session_state.enhanced_results = None
+            st.toast("Resume uploaded successfully!")
+
+    btn_cols = st.columns(2)
+    with btn_cols[0]:
+        if st.button("Find My Perfect Jobs", disabled=not bool(st.session_state.resume_text)):
+            run_recommend(
+                "main",
+                location_weight=location_weight,
+                salary_weight=salary_weight,
+                experience_weight=experience_weight,
+                user_location=user_location,
+                user_salary=user_salary,
+                user_experience=user_experience
             )
-            uploaded_file = st.file_uploader("", type=["pdf"], key="file_uploader", label_visibility="collapsed")
-
-        if uploaded_file is not None:
-            if st.session_state.last_uploaded_file != uploaded_file.name:
-                st.session_state.last_uploaded_file = uploaded_file.name
-                st.session_state.resume_text = extract_text_from_pdf(uploaded_file)
-                st.session_state.resume_id = hash(st.session_state.resume_text) % (10**8)
-                st.session_state.job_results = []
-                st.session_state.results_ready = False
-                st.session_state.enhanced_results = None
-                st.toast("Resume uploaded successfully!")
-
-        btn_cols = st.columns(2)
-        with btn_cols[0]:
-            if st.button("Find My Perfect Jobs", disabled=not bool(st.session_state.resume_text)):
-                run_recommend(
-                    "main",
-                    location_weight=location_weight,
-                    salary_weight=salary_weight,
-                    experience_weight=experience_weight,
-                    user_location=user_location,
-                    user_salary=user_salary,
-                    user_experience=user_experience
+    with btn_cols[1]:
+        if st.button("Enhance with AI Feedback", disabled=not bool(st.session_state.resume_text)):
+            with st.spinner("🧠 Retraining model using your feedback..."):
+                st.session_state.enhanced_results = recommender.retrain_with_feedback(
+                    st.session_state.resume_text, top_n=20
                 )
-        with btn_cols[1]:
-            if st.button("Enhance with AI Feedback", disabled=not bool(st.session_state.resume_text)):
-                with st.spinner("🧠 Retraining model using your feedback..."):
-                    st.session_state.enhanced_results = recommender.retrain_with_feedback(
-                        st.session_state.resume_text, top_n=20
-                    )
 
 # -------------------- JOB RESULTS --------------------
 if st.session_state.results_ready and st.session_state.job_results:
@@ -306,7 +282,6 @@ if st.session_state.enhanced_results:
     st.markdown("### 🚀 Enhanced Recommendations Dashboard")
 
     with st.container():
-        # Use columns for a compact layout
         col1, col2 = st.columns([1, 1])
 
         with col1:
@@ -320,7 +295,7 @@ if st.session_state.enhanced_results:
                 f"</div>",
                 unsafe_allow_html=True
             )
-            st.markdown("---") # Visual separator
+
             st.markdown("#### 📈 Metrics Trend")
             history = recommender.get_metrics_history()
             if not history.empty:
@@ -333,7 +308,6 @@ if st.session_state.enhanced_results:
         
         with col2:
             st.markdown("#### 📊 Old vs Enhanced (Top 20)")
-            
             c1, c2 = st.columns(2)
             with c1:
                 st.markdown("<div class='comparison-card old-rec'>", unsafe_allow_html=True)
@@ -348,7 +322,6 @@ if st.session_state.enhanced_results:
                     st.write(f"{i}. {job['position'].title()} (adj={job.get('adjusted_score', 0):.3f})")
                 st.markdown("</div>", unsafe_allow_html=True)
 
-        # Detailed comparison table below the main dashboard
         st.markdown("---")
         st.markdown("#### Detailed Comparison (Top 20)")
         comp_df = er["comparison"].copy()
@@ -358,5 +331,5 @@ if st.session_state.enhanced_results:
 with st.sidebar.expander("🐞 Debug Info"):
     st.write("Ratings file path:", RATINGS_PATH)
     if os.path.exists(RATINGS_PATH):
-        st.dataframe(pd.read_csv(RATINGS_PATH).tail(5))
+        st.dataframe(pd.read_csv(RATINGS_PATH, on_bad_lines='skip').tail(5))
     st.write("Session keys:", list(st.session_state.keys()))
