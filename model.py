@@ -412,17 +412,31 @@ class JobRecommendationSystem:
 
     def get_metrics_history(self):
         """Return metrics history DataFrame if available."""
+        full_schema = [
+            "timestamp", "ndcg_at_k", "spearman_r", "reordered_pct", "k",
+            "resume_quality", "avg_location_score", "avg_salary_score", "avg_experience_score"
+        ]
         if not os.path.exists(self.metrics_path):
-            return pd.DataFrame(columns=[
-                "timestamp", "ndcg_at_k", "spearman_r", "reordered_pct", "k",
-                "resume_quality", "avg_location_score", "avg_salary_score", "avg_experience_score"
-            ])
+            return pd.DataFrame(columns=full_schema)
         try:
             return pd.read_csv(self.metrics_path)
         except pd.errors.ParserError:
-            # Fallback for when the CSV is malformed due to schema changes.
-            cols = [
-                "timestamp", "ndcg_at_k", "spearman_r", "reordered_pct", "k",
-                "resume_quality", "avg_location_score", "avg_salary_score", "avg_experience_score"
-            ]
-            return pd.read_csv(self.metrics_path, names=cols, header=0)
+            # Fallback for ragged CSV due to schema changes.
+            import csv
+            with open(self.metrics_path, 'r', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                try:
+                    header = next(reader)
+                    data = list(reader)
+                except StopIteration:
+                    return pd.DataFrame(columns=full_schema)
+
+            df = pd.DataFrame(data)
+            num_actual_cols = df.shape[1]
+            df.columns = full_schema[:num_actual_cols]
+
+            for col_name in full_schema:
+                if col_name not in df.columns:
+                    df[col_name] = np.nan
+
+            return df[full_schema]
