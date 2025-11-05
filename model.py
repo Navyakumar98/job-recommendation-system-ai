@@ -181,16 +181,14 @@ class JobRecommendationSystem:
         )
 
         if not use_feedback:
-            # Add minimal adjusted_score for consistent schema
-            # (still sorted by similarity already)
             recs["adjusted_score"] = recs["similarity"]
-            return {"recommended_jobs": recs.to_dict(orient="records")}
+            return {"recommended_jobs": recs.to_dict(orient="records"), "resume_quality": resume_quality}
 
         # Feedback-driven personalization
         rated_embeds, ratings, _ = self.load_feedback_embeddings()
         if rated_embeds is None:
             recs["adjusted_score"] = recs["similarity"]
-            return {"recommended_jobs": recs.to_dict(orient="records")}
+            return {"recommended_jobs": recs.to_dict(orient="records"), "resume_quality": resume_quality}
 
         # Weighted user preferences vector
         norm_r = (ratings - ratings.min()) / (ratings.max() - ratings.min() + 1e-9)
@@ -419,4 +417,12 @@ class JobRecommendationSystem:
                 "timestamp", "ndcg_at_k", "spearman_r", "reordered_pct", "k",
                 "resume_quality", "avg_location_score", "avg_salary_score", "avg_experience_score"
             ])
-        return pd.read_csv(self.metrics_path)
+        try:
+            return pd.read_csv(self.metrics_path)
+        except pd.errors.ParserError:
+            # Fallback for when the CSV is malformed due to schema changes.
+            cols = [
+                "timestamp", "ndcg_at_k", "spearman_r", "reordered_pct", "k",
+                "resume_quality", "avg_location_score", "avg_salary_score", "avg_experience_score"
+            ]
+            return pd.read_csv(self.metrics_path, names=cols, header=0)
