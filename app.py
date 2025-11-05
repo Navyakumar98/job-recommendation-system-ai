@@ -95,26 +95,55 @@ def run_recommend(source: str = "button"):
 st.markdown(
     """
     <style>
-        .main { background-color: #f9fafc; }
-        h1 { color: #004aad; text-align: center; }
+        .main { background-color: #f0f2f6; }
+        h1, h2, h3, h4, h5, h6 { color: #262730; }
         .stButton>button {
-            background-color: #004aad; color: white;
+            background-color: #0078ff; color: white;
+            border: 2px solid #0078ff;
             border-radius: 8px; font-weight: bold; padding: 8px 16px;
+            transition: all 0.2s ease;
         }
-        .stButton>button:hover { background-color: #0078ff; }
-        .stSlider label { color: #004aad !important; }
+        .stButton>button:hover {
+            background-color: #fff;
+            color: #0078ff;
+        }
         .job-card {
             background-color: #ffffff; border-radius: 12px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-            padding: 15px; margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 20px; margin-bottom: 25px;
+            border: 1px solid #e8e8e8;
         }
+        .comparison-card {
+            background-color: #fff; border-radius: 12px; padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .old-rec { background-color: #fff3e0; padding: 10px; border-radius: 8px; }
+        .enhanced-rec { background-color: #e3f2fd; padding: 10px; border-radius: 8px; }
         .metric-pill {
-            display:inline-block;padding:6px 10px;border-radius:999px;
-            background:#eef4ff;border:1px solid #cfe0ff;margin-right:8px;font-size:12px;
+            display:inline-block;padding:6px 12px;border-radius:16px;
+            background:#eef4ff;border:1px solid #cfe0ff;margin-right:8px;
+            font-size:14px; font-weight: 500;
         }
         .tag {
-            display:inline-block;margin:2px 6px 0 0;padding:3px 8px;border-radius:999px;
-            background:#f1f5f9;border:1px solid #e2e8f0;font-size:12px;
+            display:inline-block;margin:2px 6px 0 0;padding:4px 10px;border-radius:12px;
+            background:#f1f5f9;border:1px solid #e2e8f0;font-size:13px;
+        }
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 24px;
+        }
+        .stTabs [data-baseweb="tab"] {
+            height: 50px;
+            white-space: pre-wrap;
+            background-color: transparent;
+            border-radius: 4px 4px 0px 0px;
+            gap: 1px;
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+        .stTabs [aria-selected="true"] {
+            background-color: #0078ff;
+            color: white;
+            font-weight: bold;
         }
     </style>
     """,
@@ -233,13 +262,17 @@ if st.session_state.enhanced_results:
             
             c1, c2 = st.columns(2)
             with c1:
+                st.markdown("<div class='comparison-card old-rec'>", unsafe_allow_html=True)
                 st.markdown("**Old (No Feedback)**")
-                for i, job in enumerate(er["old_jobs"][:20], start=1):
-                    st.write(f"{i}. {job['position'].title()} ({job.get('similarity', 0):.3f})")
+                for i, job in enumerate(er["old_jobs"][:10], start=1):
+                    st.write(f"{i}. {job['position'].title()} (sim={job.get('similarity', 0):.3f})")
+                st.markdown("</div>", unsafe_allow_html=True)
             with c2:
+                st.markdown("<div class='comparison-card enhanced-rec'>", unsafe_allow_html=True)
                 st.markdown("**Enhanced (Feedback)**")
-                for i, job in enumerate(er["new_jobs"][:20], start=1):
-                    st.write(f"{i}. {job['position'].title()} ({job.get('adjusted_score', 0):.3f})")
+                for i, job in enumerate(er["new_jobs"][:10], start=1):
+                    st.write(f"{i}. {job['position'].title()} (adj={job.get('adjusted_score', 0):.3f})")
+                st.markdown("</div>", unsafe_allow_html=True)
 
         # Detailed comparison table below the main dashboard
         st.markdown("---")
