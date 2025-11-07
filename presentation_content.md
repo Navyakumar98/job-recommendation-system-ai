@@ -115,7 +115,26 @@
 
 ---
 
-## Slide 9: Conclusion
+## Slide 9: Key Formulas and Ratios
+
+**1. Resume Quality Score**
+
+*   **Formula:** `(0.4 * length_score) + (0.4 * diversity_score) + (0.2 * metrics_score)`
+*   **Why it works:** This formula provides a holistic view of resume quality by rewarding detailed content (length), professional structure (diversity), and tangible results (metrics). A higher score indicates a resume that is more likely to be informative and well-structured, leading to better job matches.
+
+**2. Adaptive Blending (Alpha)**
+
+*   **Formula:** `alpha = 0.9 - 0.04 * n_ratings`
+*   **Why it works:** This allows the system to dynamically shift its focus from resume-based similarity to user-driven feedback. Initially, the resume is the primary driver of recommendations. As the user provides more feedback, the system learns their preferences and adjusts the recommendations accordingly, creating a personalized experience.
+
+**3. Adjusted Score**
+
+*   **Formula:** `(alpha * similarity) + (beta * user_feedback) + skill_boost + (weights * heuristic_scores)`
+*   **Why it works:** This comprehensive formula combines multiple factors to create a robust and practical ranking. It balances the semantic match between the resume and job description, the user's learned preferences, direct skill overlap, and real-world constraints like location and salary. This multi-faceted approach ensures that the final recommendations are not only relevant but also actionable.
+
+---
+
+## Slide 10: Conclusion
 
 **Summary**
 
@@ -130,6 +149,6 @@
 
 ---
 
-## Slide 10: Q&A
+## Slide 11: Q&A
 
 **Questions?**
